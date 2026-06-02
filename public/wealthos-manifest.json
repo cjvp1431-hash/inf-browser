@@ -1,0 +1,19 @@
+{
+  "name": "WealthOS César",
+  "short_name": "WealthOS",
+  "description": "Sistema personal de construcción patrimonial",
+  "start_url": "/wealthos",
+  "display": "standalone",
+  "background_color": "#f5f5f7",
+  "theme_color": "#0a0a1a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/wealthos-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity"]
+}
