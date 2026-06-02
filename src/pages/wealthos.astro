@@ -1,0 +1,41 @@
+---
+import App from "../wealthos/App";
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a1a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="WealthOS" />
+    <meta name="description" content="WealthOS César – Sistema personal de construcción patrimonial" />
+    <link rel="manifest" href="/wealthos-manifest.json" />
+    <link rel="apple-touch-icon" href="/wealthos-icon.png" />
+    <title>WealthOS César</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        height: 100%;
+        background: #f5f5f7;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overscroll-behavior: none;
+      }
+      #app { height: 100%; }
+      /* Hide scrollbar but keep scroll */
+      ::-webkit-scrollbar { display: none; }
+      * { scrollbar-width: none; }
+      /* Tap highlight */
+      * { -webkit-tap-highlight-color: transparent; }
+      input, select, button { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <App client:only="react" />
+    </div>
+  </body>
+</html>
