@@ -31,6 +31,6 @@
         "expo-sqlite"
       ]
     ],
-    "newArchEnabled": true
+    "newArchEnabled": false
   }
 }
