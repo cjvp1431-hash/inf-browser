@@ -1,23 +1,42 @@
 import React, { useState } from 'react';
 import {
   View, StyleSheet, FlatList, TouchableOpacity, Modal,
-  KeyboardAvoidingView, Platform, ScrollView,
+  KeyboardAvoidingView, Platform, ScrollView, Dimensions, Text,
 } from 'react-native';
-import { Text, TextInput, Button, Surface, FAB, Chip } from 'react-native-paper';
+import { TextInput, Button, Chip, FAB } from 'react-native-paper';
+import { LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useWorkoutsStore } from '../store/workoutsStore';
 import { COLORS, WEIGHT_UNITS } from '../utils/constants';
 import { formatDate, getTodayString } from '../utils/formatters';
-import { Workout } from '../database/database';
+import { Workout } from '../types';
+import WorkoutCard from '../components/WorkoutCard';
+
+const { width: SCREEN_W } = Dimensions.get('window');
+
+const CHART_CFG = {
+  backgroundGradientFrom: COLORS.surface,
+  backgroundGradientTo: COLORS.surface,
+  color: () => COLORS.accent,
+  labelColor: () => COLORS.textSecondary,
+  propsForDots: { r: '4', strokeWidth: '2', stroke: COLORS.accent },
+  decimalPlaces: 1,
+};
 
 export default function WorkoutsScreen() {
-  const { workouts, addWorkout, deleteWorkout } = useWorkoutsStore();
+  const { workouts, personalRecords, addWorkout, deleteWorkout } = useWorkoutsStore();
+
   const [modalVisible, setModalVisible] = useState(false);
+  const [chartExercise, setChartExercise] = useState<string | null>(null);
+
   const [exerciseName, setExerciseName] = useState('');
   const [sets, setSets] = useState('3');
   const [reps, setReps] = useState('10');
   const [weight, setWeight] = useState('0');
-  const [weightUnit, setWeightUnit] = useState('kg');
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'lbs'>('kg');
+  const [notes, setNotes] = useState('');
+
+  const today = getTodayString();
 
   const openAdd = () => {
     setExerciseName('');
@@ -25,6 +44,7 @@ export default function WorkoutsScreen() {
     setReps('10');
     setWeight('0');
     setWeightUnit('kg');
+    setNotes('');
     setModalVisible(true);
   };
 
@@ -36,84 +56,128 @@ export default function WorkoutsScreen() {
       reps: parseInt(reps) || 10,
       weight: parseFloat(weight) || 0,
       weightUnit,
-      date: getTodayString(),
+      date: today,
+      notes: notes.trim(),
     });
     setModalVisible(false);
   };
 
   const groupedByDate = workouts.reduce<Record<string, Workout[]>>((acc, w) => {
-    const date = w.date.split('T')[0];
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(w);
+    const d = w.date.split('T')[0];
+    if (!acc[d]) acc[d] = [];
+    acc[d].push(w);
     return acc;
   }, {});
 
   const dateGroups = Object.entries(groupedByDate).sort(([a], [b]) => b.localeCompare(a));
 
-  const renderItem = ({ item }: { item: [string, Workout[]] }) => {
-    const [date, items] = item;
-    const isToday = date === getTodayString();
-    return (
-      <View style={styles.group}>
-        <Text style={styles.dateLabel}>
-          {isToday ? 'Hoy' : formatDate(date)}
-        </Text>
-        {items.map(w => (
-          <Surface key={w.id} style={styles.workoutCard} elevation={1}>
-            <View style={styles.workoutIcon}>
-              <Ionicons name="barbell" size={22} color={COLORS.accent} />
-            </View>
-            <View style={styles.workoutInfo}>
-              <Text style={styles.exerciseName}>{w.exerciseName}</Text>
-              <View style={styles.workoutMeta}>
-                <View style={styles.metaBadge}>
-                  <Text style={styles.metaLabel}>Series</Text>
-                  <Text style={styles.metaValue}>{w.sets}</Text>
-                </View>
-                <View style={styles.metaBadge}>
-                  <Text style={styles.metaLabel}>Reps</Text>
-                  <Text style={styles.metaValue}>{w.reps}</Text>
-                </View>
-                {w.weight > 0 && (
-                  <View style={styles.metaBadge}>
-                    <Text style={styles.metaLabel}>Peso</Text>
-                    <Text style={styles.metaValue}>{w.weight}{w.weightUnit}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            <TouchableOpacity onPress={() => deleteWorkout(w.id)} style={styles.deleteBtn}>
-              <Ionicons name="trash-outline" size={18} color={COLORS.error} />
-            </TouchableOpacity>
-          </Surface>
-        ))}
-      </View>
-    );
-  };
+  // Weight progression chart for selected exercise
+  const exerciseHistory = chartExercise
+    ? workouts
+        .filter(w => w.exerciseName.toLowerCase() === chartExercise.toLowerCase() && w.weight > 0)
+        .slice(0, 8)
+        .reverse()
+    : [];
+
+  const uniqueExercises = [...new Set(workouts.map(w => w.exerciseName))].slice(0, 8);
+
+  const chartData = exerciseHistory.length >= 2
+    ? {
+        labels: exerciseHistory.map(w => w.date.slice(5)), // MM-DD
+        datasets: [{ data: exerciseHistory.map(w => w.weight) }],
+      }
+    : null;
 
   return (
     <View style={styles.container}>
-      {workouts.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="barbell-outline" size={70} color={COLORS.border} />
-          <Text style={styles.emptyText}>Sin entrenamientos registrados</Text>
-          <Text style={styles.emptySubtext}>Toca + para añadir tu primer ejercicio</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={dateGroups}
-          keyExtractor={([date]) => date}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-        />
-      )}
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* PR Banner */}
+        {Object.keys(personalRecords).length > 0 && (
+          <View style={styles.prSection}>
+            <Text style={styles.sectionTitle}>🏆 Records personales</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {Object.entries(personalRecords).map(([name, maxWeight]) => (
+                <View key={name} style={styles.prCard}>
+                  <Text style={styles.prName} numberOfLines={1}>{name}</Text>
+                  <Text style={styles.prWeight}>{maxWeight} kg</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Progress chart */}
+        {uniqueExercises.length > 0 && (
+          <View style={styles.chartSection}>
+            <Text style={styles.sectionTitle}>Progresión de peso</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.exerciseScroll}>
+              {uniqueExercises.map(ex => (
+                <Chip
+                  key={ex}
+                  selected={chartExercise === ex}
+                  onPress={() => setChartExercise(chartExercise === ex ? null : ex)}
+                  selectedColor={COLORS.accent}
+                  compact
+                  style={{ marginRight: 6 }}
+                >
+                  {ex}
+                </Chip>
+              ))}
+            </ScrollView>
+            {chartData ? (
+              <LineChart
+                data={chartData}
+                width={SCREEN_W - 32}
+                height={160}
+                chartConfig={CHART_CFG}
+                bezier
+                style={styles.chart}
+                withInnerLines={false}
+                withOuterLines={false}
+              />
+            ) : chartExercise ? (
+              <View style={styles.chartEmpty}>
+                <Text style={styles.chartEmptyText}>Necesitas al menos 2 registros con peso para ver el gráfico</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {/* Workout log */}
+        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Historial</Text>
+        {dateGroups.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="barbell-outline" size={64} color={COLORS.border} />
+            <Text style={styles.emptyText}>Sin entrenamientos registrados</Text>
+            <Text style={styles.emptySub}>Toca + para añadir tu primer ejercicio</Text>
+          </View>
+        ) : (
+          dateGroups.map(([date, items]) => (
+            <View key={date} style={styles.group}>
+              <Text style={styles.dateLabel}>
+                {date === today ? '🏋️ Hoy' : formatDate(date)}
+              </Text>
+              {items.map(w => (
+                <WorkoutCard
+                  key={w.id}
+                  workout={w}
+                  onDelete={deleteWorkout}
+                  isPR={w.weight > 0 && w.weight >= (personalRecords[w.exerciseName] || 0) && w.weight > 0}
+                />
+              ))}
+            </View>
+          ))
+        )}
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
       <FAB icon="plus" style={styles.fab} color="#fff" onPress={openAdd} />
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBg}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
+          <ScrollView contentContainerStyle={styles.modalSheet} keyboardShouldPersistTaps="handled">
+            <View style={styles.handle} />
             <Text style={styles.modalTitle}>Registrar Ejercicio</Text>
 
             <TextInput
@@ -166,7 +230,7 @@ export default function WorkoutsScreen() {
                   <Chip
                     key={u}
                     selected={weightUnit === u}
-                    onPress={() => setWeightUnit(u)}
+                    onPress={() => setWeightUnit(u as 'kg' | 'lbs')}
                     selectedColor={COLORS.accent}
                     compact
                   >
@@ -176,11 +240,22 @@ export default function WorkoutsScreen() {
               </View>
             </View>
 
+            <TextInput
+              label="Notas"
+              value={notes}
+              onChangeText={setNotes}
+              style={styles.input}
+              mode="outlined"
+              outlineColor={COLORS.border}
+              activeOutlineColor={COLORS.accent}
+              placeholder="Ej: Buen día, aumenté 5kg..."
+            />
+
             <View style={styles.modalActions}>
               <Button onPress={() => setModalVisible(false)} textColor={COLORS.textSecondary}>Cancelar</Button>
               <Button mode="contained" onPress={handleSave} buttonColor={COLORS.primary}>Guardar</Button>
             </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -189,47 +264,35 @@ export default function WorkoutsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  list: { padding: 12, paddingBottom: 100 },
+  scroll: { padding: 16 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  prSection: { marginBottom: 16 },
+  prCard: {
+    backgroundColor: '#FF980015',
+    borderRadius: 12,
+    padding: 12,
+    marginRight: 10,
+    minWidth: 90,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FF980030',
+  },
+  prName: { fontSize: 11, color: COLORS.textSecondary, fontWeight: '600', textAlign: 'center' },
+  prWeight: { fontSize: 18, fontWeight: '800', color: '#FF9800', marginTop: 4 },
+  chartSection: { marginBottom: 16 },
+  exerciseScroll: { marginBottom: 10 },
+  chart: { borderRadius: 12, marginTop: 4 },
+  chartEmpty: { padding: 16, backgroundColor: COLORS.surface, borderRadius: 12, alignItems: 'center' },
+  chartEmptyText: { color: COLORS.textSecondary, fontSize: 12, textAlign: 'center' },
   group: { marginBottom: 16 },
   dateLabel: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 8, textTransform: 'uppercase' },
-  workoutCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    gap: 12,
-  },
-  workoutIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.accent + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  workoutInfo: { flex: 1 },
-  exerciseName: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
-  workoutMeta: { flexDirection: 'row', gap: 8, marginTop: 6 },
-  metaBadge: { backgroundColor: COLORS.surfaceDark, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, alignItems: 'center' },
-  metaLabel: { fontSize: 10, color: COLORS.textSecondary },
-  metaValue: { fontSize: 13, fontWeight: '700', color: COLORS.textPrimary },
-  deleteBtn: { padding: 6 },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: COLORS.textSecondary },
-  emptySubtext: { fontSize: 14, color: COLORS.textSecondary },
+  empty: { alignItems: 'center', paddingVertical: 60, gap: 10 },
+  emptyText: { fontSize: 16, fontWeight: '600', color: COLORS.textSecondary },
+  emptySub: { fontSize: 13, color: COLORS.textSecondary },
   fab: { position: 'absolute', right: 16, bottom: 16, backgroundColor: COLORS.primary },
   modalBg: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    paddingBottom: 40,
-    gap: 10,
-  },
-  modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 50, gap: 10 },
+  handle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
   modalTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
   input: { backgroundColor: '#fff' },
   row: { flexDirection: 'row', gap: 10 },

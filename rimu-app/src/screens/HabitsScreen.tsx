@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import {
   View, StyleSheet, FlatList, TouchableOpacity, Modal,
-  ScrollView, KeyboardAvoidingView, Platform,
+  ScrollView, KeyboardAvoidingView, Platform, Text,
 } from 'react-native';
-import { Text, TextInput, Button, Surface, FAB, Chip } from 'react-native-paper';
+import { TextInput, Button, Chip, FAB } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useHabitsStore } from '../store/habitsStore';
 import { COLORS } from '../utils/constants';
 import { getTodayString } from '../utils/formatters';
-import { Habit } from '../database/database';
+import { Habit } from '../types';
+import HabitCard from '../components/HabitCard';
 
 const FREQUENCIES = ['daily', 'weekly', 'monthly'] as const;
 const FREQ_LABELS: Record<string, string> = { daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual' };
@@ -20,7 +21,7 @@ const LAST_30_DAYS = Array.from({ length: 30 }, (_, i) => {
 });
 
 export default function HabitsScreen() {
-  const { habits, addHabit, checkIn, deleteHabit } = useHabitsStore();
+  const { habits, addHabit, checkIn, deleteHabit, checkedTodayCount, monthlyCompletionRate } = useHabitsStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<Habit | null>(null);
   const [calendarModal, setCalendarModal] = useState(false);
@@ -40,61 +41,53 @@ export default function HabitsScreen() {
     setModalVisible(false);
   };
 
-  const handleCheckIn = async (id: string) => {
-    await checkIn(id);
-  };
-
   const openCalendar = (habit: Habit) => {
     setSelectedHabit(habit);
     setCalendarModal(true);
   };
 
-  const renderHabit = ({ item }: { item: Habit }) => {
-    const checkedToday = item.completedDates.includes(today);
-    return (
-      <Surface style={styles.habitCard} elevation={1}>
-        <TouchableOpacity style={styles.habitMain} onPress={() => openCalendar(item)}>
-          <View style={[styles.streakBadge, { backgroundColor: checkedToday ? COLORS.accent + '30' : COLORS.surface }]}>
-            <Ionicons name="flame" size={18} color={checkedToday ? COLORS.accent : COLORS.textSecondary} />
-            <Text style={[styles.streakNum, { color: checkedToday ? COLORS.accent : COLORS.textSecondary }]}>
-              {item.currentStreak}
-            </Text>
-          </View>
-          <View style={styles.habitInfo}>
-            <Text style={styles.habitTitle}>{item.title}</Text>
-            <Text style={styles.habitFreq}>{FREQ_LABELS[item.frequency]} · Récord: {item.longestStreak}</Text>
-          </View>
-        </TouchableOpacity>
-        <View style={styles.habitActions}>
-          <TouchableOpacity
-            style={[styles.checkInBtn, checkedToday && styles.checkInBtnDone]}
-            onPress={() => !checkedToday && handleCheckIn(item.id)}
-          >
-            <Ionicons
-              name={checkedToday ? 'checkmark-circle' : 'checkmark-circle-outline'}
-              size={28}
-              color={checkedToday ? COLORS.success : COLORS.textSecondary}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => deleteHabit(item.id)} style={styles.deleteBtn}>
-            <Ionicons name="trash-outline" size={18} color={COLORS.error} />
-          </TouchableOpacity>
-        </View>
-      </Surface>
-    );
-  };
+  const checkedToday = checkedTodayCount();
+  const rate = monthlyCompletionRate();
 
   return (
     <View style={styles.container}>
+      {/* Stats header */}
+      <View style={styles.statsBar}>
+        <View style={styles.statItem}>
+          <Text style={styles.statNum}>{checkedToday}/{habits.length}</Text>
+          <Text style={styles.statLabel}>Hoy</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statNum, { color: rate >= 80 ? COLORS.success : rate >= 50 ? COLORS.warning : COLORS.error }]}>
+            {rate}%
+          </Text>
+          <Text style={styles.statLabel}>Mes</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statNum}>{habits.filter(h => h.currentStreak > 0).length}</Text>
+          <Text style={styles.statLabel}>Con racha 🔥</Text>
+        </View>
+      </View>
+
       <FlatList
         data={habits}
         keyExtractor={i => i.id}
-        renderItem={renderHabit}
+        renderItem={({ item }) => (
+          <HabitCard
+            habit={item}
+            onCheckIn={checkIn}
+            onDelete={deleteHabit}
+            onPress={() => openCalendar(item)}
+          />
+        )}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="flame-outline" size={60} color={COLORS.border} />
+            <Ionicons name="flame-outline" size={64} color={COLORS.border} />
             <Text style={styles.emptyText}>Agrega tu primer hábito</Text>
+            <Text style={styles.emptySub}>Construye rutinas poderosas día a día</Text>
           </View>
         }
       />
@@ -105,7 +98,7 @@ export default function HabitsScreen() {
       <Modal visible={modalVisible} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBg}>
           <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
+            <View style={styles.handle} />
             <Text style={styles.modalTitle}>Nuevo Hábito</Text>
 
             <TextInput
@@ -127,7 +120,7 @@ export default function HabitsScreen() {
                   onPress={() => setFrequency(f)}
                   selectedColor={COLORS.accent}
                   compact
-                  style={styles.chip}
+                  style={{ marginRight: 6 }}
                 >
                   {FREQ_LABELS[f]}
                 </Chip>
@@ -142,13 +135,13 @@ export default function HabitsScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Calendar Modal */}
+      {/* Calendar / Detail Modal */}
       <Modal visible={calendarModal} animationType="slide" transparent>
         <View style={styles.modalBg}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
+          <ScrollView contentContainerStyle={styles.modalSheet}>
+            <View style={styles.handle} />
             <Text style={styles.modalTitle}>{selectedHabit?.title}</Text>
-            <Text style={styles.calSubtitle}>Últimos 30 días</Text>
+            <Text style={styles.calSub}>{FREQ_LABELS[selectedHabit?.frequency ?? 'daily']} · Últimos 30 días</Text>
 
             <View style={styles.calGrid}>
               {LAST_30_DAYS.map(day => {
@@ -167,26 +160,31 @@ export default function HabitsScreen() {
 
             <View style={styles.calStats}>
               <View style={styles.calStat}>
-                <Ionicons name="flame" size={20} color={COLORS.accent} />
+                <Ionicons name="flame" size={22} color={COLORS.accent} />
                 <Text style={styles.calStatNum}>{selectedHabit?.currentStreak}</Text>
                 <Text style={styles.calStatLabel}>Racha actual</Text>
               </View>
               <View style={styles.calStat}>
-                <Ionicons name="trophy" size={20} color="#FF9800" />
+                <Ionicons name="trophy" size={22} color="#FF9800" />
                 <Text style={styles.calStatNum}>{selectedHabit?.longestStreak}</Text>
                 <Text style={styles.calStatLabel}>Récord</Text>
               </View>
               <View style={styles.calStat}>
-                <Ionicons name="checkmark-done" size={20} color={COLORS.success} />
+                <Ionicons name="checkmark-done" size={22} color={COLORS.success} />
                 <Text style={styles.calStatNum}>{selectedHabit?.completedDates.length}</Text>
-                <Text style={styles.calStatLabel}>Total</Text>
+                <Text style={styles.calStatLabel}>Total días</Text>
               </View>
             </View>
 
-            <Button mode="contained" onPress={() => setCalendarModal(false)} buttonColor={COLORS.primary} style={{ marginTop: 8 }}>
+            <Button
+              mode="contained"
+              onPress={() => setCalendarModal(false)}
+              buttonColor={COLORS.primary}
+              style={{ marginTop: 8 }}
+            >
               Cerrar
             </Button>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -195,68 +193,40 @@ export default function HabitsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  list: { padding: 12, gap: 10, paddingBottom: 100 },
-  habitCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
+  statsBar: {
     flexDirection: 'row',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    justifyContent: 'space-around',
     alignItems: 'center',
   },
-  habitMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-    minWidth: 52,
-    justifyContent: 'center',
-  },
-  streakNum: { fontWeight: '800', fontSize: 15 },
-  habitInfo: { flex: 1 },
-  habitTitle: { fontSize: 15, fontWeight: '600', color: COLORS.textPrimary },
-  habitFreq: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
-  habitActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  checkInBtn: { padding: 4 },
-  checkInBtnDone: { opacity: 0.7 },
-  deleteBtn: { padding: 4 },
-  empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
-  emptyText: { color: COLORS.textSecondary, fontSize: 16 },
+  statItem: { alignItems: 'center', gap: 3 },
+  statNum: { fontSize: 22, fontWeight: '800', color: '#fff' },
+  statLabel: { fontSize: 11, color: '#888', fontWeight: '500' },
+  statDivider: { width: 1, height: 32, backgroundColor: '#333' },
+  list: { padding: 12, paddingBottom: 100 },
+  empty: { alignItems: 'center', paddingTop: 60, gap: 10 },
+  emptyText: { color: COLORS.textPrimary, fontSize: 17, fontWeight: '600' },
+  emptySub: { color: COLORS.textSecondary, fontSize: 13 },
   fab: { position: 'absolute', right: 16, bottom: 16, backgroundColor: COLORS.primary },
   modalBg: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    paddingBottom: 40,
-    gap: 10,
-  },
-  modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 50, gap: 10 },
+  handle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
   modalTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
   input: { backgroundColor: '#fff' },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
-  chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  chip: {},
+  fieldLabel: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase' },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
-  calSubtitle: { fontSize: 13, color: COLORS.textSecondary },
+  calSub: { fontSize: 13, color: COLORS.textSecondary },
   calGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginVertical: 8 },
-  calDay: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  calDay: { width: 34, height: 34, borderRadius: 8, backgroundColor: COLORS.surface, justifyContent: 'center', alignItems: 'center' },
   calDayDone: { backgroundColor: COLORS.accent },
   calDayToday: { borderWidth: 2, borderColor: COLORS.primary },
   calDayText: { fontSize: 11, fontWeight: '600', color: COLORS.textSecondary },
-  calDayTextDone: { color: '#000' },
-  calStats: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 8 },
+  calDayTextDone: { color: '#000', fontWeight: '700' },
+  calStats: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 12 },
   calStat: { alignItems: 'center', gap: 4 },
-  calStatNum: { fontSize: 22, fontWeight: '800', color: COLORS.textPrimary },
-  calStatLabel: { fontSize: 12, color: COLORS.textSecondary },
+  calStatNum: { fontSize: 24, fontWeight: '800', color: COLORS.textPrimary },
+  calStatLabel: { fontSize: 11, color: COLORS.textSecondary },
 });

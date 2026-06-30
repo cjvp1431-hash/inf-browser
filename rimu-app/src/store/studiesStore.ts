@@ -1,67 +1,70 @@
 import { create } from 'zustand';
+import { Subject, StudySession } from '../types';
 import {
-  Subject, StudySession,
-  getSubjects, addSubject as dbAddSubject, deleteSubject as dbDeleteSubject,
+  getSubjects, addSubject as dbAdd, deleteSubject as dbDelete,
   getStudySessions, addStudySession as dbAddSession,
-  getSubjectTotalHours,
+  getSubjectTotalMinutes,
 } from '../database/database';
 import { getTodayString } from '../utils/formatters';
 
 interface StudiesState {
   subjects: Subject[];
   sessions: StudySession[];
-  subjectHours: Record<string, number>;
+  subjectMinutes: Record<string, number>;
   isLoading: boolean;
   loadAll: () => Promise<void>;
-  addSubject: (subject: { name: string; color: string }) => Promise<void>;
+  addSubject: (s: { name: string; color: string }) => Promise<void>;
   deleteSubject: (id: string) => Promise<void>;
-  addSession: (session: Omit<StudySession, 'id' | 'createdAt' | 'subjectName'>) => Promise<void>;
+  addSession: (s: Omit<StudySession, 'id' | 'createdAt' | 'subjectName'>) => Promise<void>;
   todayMinutes: () => number;
+  subjectHoursFormatted: (id: string) => string;
 }
 
 export const useStudiesStore = create<StudiesState>((set, get) => ({
   subjects: [],
   sessions: [],
-  subjectHours: {},
+  subjectMinutes: {},
   isLoading: false,
 
   loadAll: async () => {
     set({ isLoading: true });
-    const [subjects, sessions, subjectHours] = await Promise.all([
-      getSubjects(),
-      getStudySessions(),
-      getSubjectTotalHours(),
+    const [subjects, sessions, subjectMinutes] = await Promise.all([
+      getSubjects(), getStudySessions(), getSubjectTotalMinutes(),
     ]);
-    set({ subjects, sessions, subjectHours, isLoading: false });
+    set({ subjects, sessions, subjectMinutes, isLoading: false });
   },
 
-  addSubject: async (subjectData) => {
-    const subject = await dbAddSubject(subjectData);
-    set(state => ({ subjects: [subject, ...state.subjects] }));
+  addSubject: async (data) => {
+    const s = await dbAdd(data);
+    set(st => ({ subjects: [s, ...st.subjects] }));
   },
 
   deleteSubject: async (id) => {
-    await dbDeleteSubject(id);
-    set(state => ({ subjects: state.subjects.filter(s => s.id !== id) }));
+    await dbDelete(id);
+    set(st => ({ subjects: st.subjects.filter(s => s.id !== id) }));
   },
 
-  addSession: async (sessionData) => {
-    const session = await dbAddSession(sessionData);
-    const subject = get().subjects.find(s => s.id === sessionData.subjectId);
-    const fullSession = { ...session, subjectName: subject?.name || '' };
-    set(state => ({
-      sessions: [fullSession, ...state.sessions],
-      subjectHours: {
-        ...state.subjectHours,
-        [sessionData.subjectId]: (state.subjectHours[sessionData.subjectId] || 0) + Math.round(sessionData.duration / 60 * 10) / 10,
+  addSession: async (data) => {
+    const session = await dbAddSession(data);
+    const subject = get().subjects.find(s => s.id === data.subjectId);
+    set(st => ({
+      sessions: [{ ...session, subjectName: subject?.name ?? '' }, ...st.sessions],
+      subjectMinutes: {
+        ...st.subjectMinutes,
+        [data.subjectId]: (st.subjectMinutes[data.subjectId] || 0) + data.duration,
       },
     }));
   },
 
   todayMinutes: () => {
     const today = getTodayString();
-    return get().sessions
-      .filter(s => s.date.startsWith(today))
-      .reduce((sum, s) => sum + s.duration, 0);
+    return get().sessions.filter(s => s.date.startsWith(today)).reduce((sum, s) => sum + s.duration, 0);
+  },
+
+  subjectHoursFormatted: (id) => {
+    const mins = get().subjectMinutes[id] || 0;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h ${m > 0 ? m + 'min' : ''}`.trim() : `${m}min`;
   },
 }));

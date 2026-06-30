@@ -1,224 +1,258 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Text, Surface, Divider, Switch } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Text } from 'react-native';
+import { Switch } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, CURRENCIES } from '../utils/constants';
-import { scheduleHabitReminder, cancelHabitReminder, requestPermissions } from '../services/notificationService';
+import { COLORS } from '../utils/constants';
 import { getDB } from '../database/database';
+import { useTasksStore } from '../store/tasksStore';
+import { useHabitsStore } from '../store/habitsStore';
+import { useWorkoutsStore } from '../store/workoutsStore';
+import { useFinanceStore } from '../store/financeStore';
+import { useStudiesStore } from '../store/studiesStore';
+
+interface SettingRowProps {
+  icon: string;
+  iconColor?: string;
+  label: string;
+  sublabel?: string;
+  onPress?: () => void;
+  right?: React.ReactNode;
+  danger?: boolean;
+}
+
+function SettingRow({ icon, iconColor, label, sublabel, onPress, right, danger }: SettingRowProps) {
+  return (
+    <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress && !right} activeOpacity={0.7}>
+      <View style={[styles.rowIcon, { backgroundColor: (iconColor ?? COLORS.accent) + '20' }]}>
+        <Ionicons name={icon as any} size={18} color={iconColor ?? COLORS.accent} />
+      </View>
+      <View style={styles.rowInfo}>
+        <Text style={[styles.rowLabel, danger && { color: COLORS.error }]}>{label}</Text>
+        {sublabel ? <Text style={styles.rowSub}>{sublabel}</Text> : null}
+      </View>
+      {right ?? (onPress ? <Ionicons name="chevron-forward" size={16} color={COLORS.textSecondary} /> : null)}
+    </TouchableOpacity>
+  );
+}
 
 export default function SettingsScreen() {
   const [habitReminder, setHabitReminder] = useState(false);
-  const [defaultCurrency, setDefaultCurrency] = useState('USD');
 
-  const toggleHabitReminder = async (value: boolean) => {
-    if (value) {
-      const granted = await requestPermissions();
-      if (!granted) {
-        Alert.alert('Permisos', 'Necesitas permitir notificaciones en Ajustes de iOS');
-        return;
-      }
-      await scheduleHabitReminder(20, 0);
-      Alert.alert('✅', 'Recordatorio diario activado a las 20:00');
-    } else {
-      await cancelHabitReminder();
-    }
-    setHabitReminder(value);
-  };
+  const loadTasks = useTasksStore(s => s.loadTasks);
+  const loadHabits = useHabitsStore(s => s.loadHabits);
+  const loadWorkouts = useWorkoutsStore(s => s.loadWorkouts);
+  const loadFinance = useFinanceStore(s => s.loadAll);
+  const loadStudies = useStudiesStore(s => s.loadAll);
 
   const showStorageInfo = async () => {
     try {
       const db = getDB();
-      const tables = ['tasks', 'habits', 'workouts', 'accounts', 'transactions', 'subjects', 'studySessions'];
+      const tables = ['tasks', 'habits', 'workouts', 'accounts', 'transactions', 'budgets', 'subjects', 'studySessions'];
       const counts: string[] = [];
       for (const table of tables) {
         const row = await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM ${table}`);
-        counts.push(`${table}: ${row?.count || 0} registros`);
+        counts.push(`${table}: ${row?.count ?? 0} registros`);
       }
-      Alert.alert('Almacenamiento', counts.join('\n'));
-    } catch (e) {
+      Alert.alert('📦 Almacenamiento', counts.join('\n'));
+    } catch {
       Alert.alert('Error', 'No se pudo leer el almacenamiento');
     }
+  };
+
+  const reloadAll = async () => {
+    await Promise.all([loadTasks(), loadHabits(), loadWorkouts(), loadFinance(), loadStudies()]);
+    Alert.alert('✅', 'Datos recargados desde la base de datos');
   };
 
   const resetData = () => {
     Alert.alert(
       '⚠️ Eliminar todos los datos',
-      '¿Estás seguro? Esta acción no se puede deshacer.',
+      'Esta acción borrará TODAS tus tareas, hábitos, finanzas, entrenamientos y sesiones de estudio. No se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: 'Eliminar todo',
           style: 'destructive',
           onPress: async () => {
-            const db = getDB();
-            const tables = ['tasks', 'habits', 'workouts', 'accounts', 'transactions', 'subjects', 'studySessions'];
-            for (const t of tables) {
-              await db.runAsync(`DELETE FROM ${t}`);
+            try {
+              const db = getDB();
+              const tables = ['tasks', 'habits', 'workouts', 'accounts', 'transactions', 'budgets', 'subjects', 'studySessions'];
+              for (const t of tables) {
+                await db.runAsync(`DELETE FROM ${t}`);
+              }
+              await Promise.all([loadTasks(), loadHabits(), loadWorkouts(), loadFinance(), loadStudies()]);
+              Alert.alert('✅', 'Todos los datos han sido eliminados');
+            } catch (e) {
+              Alert.alert('Error', String(e));
             }
-            Alert.alert('✅', 'Datos eliminados. Reinicia la app para ver los cambios.');
           },
         },
-      ]
+      ],
     );
   };
 
-  const settingSections = [
-    {
-      title: 'Notificaciones',
-      items: [
-        {
-          icon: 'notifications-outline',
-          label: 'Recordatorio de hábitos',
-          subtitle: 'Notificación diaria a las 20:00',
-          right: <Switch value={habitReminder} onValueChange={toggleHabitReminder} color={COLORS.accent} />,
-        },
-      ],
-    },
-    {
-      title: 'Datos',
-      items: [
-        {
-          icon: 'server-outline',
-          label: 'Ver almacenamiento',
-          subtitle: 'Conteo de registros en la base de datos',
-          onPress: showStorageInfo,
-        },
-        {
-          icon: 'trash-outline',
-          label: 'Eliminar todos los datos',
-          subtitle: 'Acción irreversible',
-          destructive: true,
-          onPress: resetData,
-        },
-      ],
-    },
-    {
-      title: 'Acerca de',
-      items: [
-        {
-          icon: 'information-circle-outline',
-          label: 'RIMU App',
-          subtitle: 'v1.0.0 · Productivity All-in-One · Offline',
-        },
-        {
-          icon: 'shield-checkmark-outline',
-          label: 'Privacidad',
-          subtitle: 'Todos tus datos están guardados localmente en tu iPhone',
-        },
-        {
-          icon: 'wifi-outline',
-          label: 'Modo offline',
-          subtitle: 'No requiere internet · Sin cuenta · Sin servidor',
-        },
-      ],
-    },
-  ];
+  const showAbout = () => {
+    Alert.alert(
+      'RIMU v2.0',
+      'Tu asistente de productividad personal.\n\n' +
+      '• Tareas con Kanban y Timeline\n' +
+      '• Hábitos con rachas y calendario\n' +
+      '• Entrenamiento con seguimiento de PR\n' +
+      '• Finanzas con gráficos y presupuestos\n' +
+      '• Estudio con Pomodoro y estadísticas\n' +
+      '• Bot RIMU con comandos en español\n\n' +
+      '100% offline · SQLite local',
+      [{ text: 'Cerrar' }],
+    );
+  };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>R</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {/* App info card */}
+      <View style={styles.appCard}>
+        <View style={styles.appLogo}>
+          <Text style={styles.appLogoText}>R</Text>
         </View>
         <View>
           <Text style={styles.appName}>RIMU</Text>
-          <Text style={styles.appVersion}>Productivity All-in-One · v1.0.0</Text>
+          <Text style={styles.appVersion}>v2.0 · Productividad personal</Text>
         </View>
       </View>
 
-      {settingSections.map((section) => (
-        <View key={section.title} style={styles.section}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <Surface style={styles.sectionCard} elevation={1}>
-            {section.items.map((item, idx) => (
-              <React.Fragment key={item.label}>
-                {idx > 0 && <Divider />}
-                <TouchableOpacity
-                  style={styles.settingItem}
-                  onPress={(item as any).onPress}
-                  disabled={!(item as any).onPress && !(item as any).right}
-                  activeOpacity={(item as any).onPress ? 0.7 : 1}
-                >
-                  <View style={[
-                    styles.settingIcon,
-                    { backgroundColor: (item as any).destructive ? '#F4433615' : COLORS.surface }
-                  ]}>
-                    <Ionicons
-                      name={item.icon as any}
-                      size={20}
-                      color={(item as any).destructive ? COLORS.error : COLORS.textPrimary}
-                    />
-                  </View>
-                  <View style={styles.settingText}>
-                    <Text style={[
-                      styles.settingLabel,
-                      (item as any).destructive && { color: COLORS.error }
-                    ]}>
-                      {item.label}
-                    </Text>
-                    <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
-                  </View>
-                  {(item as any).right
-                    ? (item as any).right
-                    : (item as any).onPress
-                    ? <Ionicons name="chevron-forward" size={18} color={COLORS.textSecondary} />
-                    : null
-                  }
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
-          </Surface>
-        </View>
-      ))}
+      {/* Data section */}
+      <Text style={styles.sectionLabel}>Datos</Text>
+      <View style={styles.section}>
+        <SettingRow
+          icon="server-outline"
+          label="Ver almacenamiento"
+          sublabel="Registros guardados en SQLite"
+          onPress={showStorageInfo}
+        />
+        <View style={styles.separator} />
+        <SettingRow
+          icon="refresh-outline"
+          iconColor="#2196F3"
+          label="Recargar datos"
+          sublabel="Sincroniza la vista con la BD"
+          onPress={reloadAll}
+        />
+      </View>
 
-      <Text style={styles.footer}>
-        Hecho con ❤️ para iPhone{'\n'}Todos los datos en SQLite local
-      </Text>
-      <View style={{ height: 80 }} />
+      {/* Notifications section */}
+      <Text style={styles.sectionLabel}>Notificaciones</Text>
+      <View style={styles.section}>
+        <SettingRow
+          icon="alarm-outline"
+          iconColor="#FF9800"
+          label="Recordatorio de hábitos"
+          sublabel="Diario a las 20:00"
+          right={
+            <Switch
+              value={habitReminder}
+              onValueChange={v => {
+                setHabitReminder(v);
+                if (v) {
+                  Alert.alert('🔔', 'Recordatorio activado a las 20:00. Requiere notificaciones habilitadas en iOS.');
+                }
+              }}
+              color={COLORS.accent}
+            />
+          }
+        />
+      </View>
+
+      {/* Modules info */}
+      <Text style={styles.sectionLabel}>Módulos activos</Text>
+      <View style={styles.section}>
+        {[
+          { icon: 'checkmark-circle', color: '#4CAF50', label: 'Tareas', sub: 'Lista · Kanban · Timeline' },
+          { icon: 'flame', color: '#FF9800', label: 'Hábitos', sub: 'Rachas · Calendario 30 días' },
+          { icon: 'barbell', color: COLORS.accent, label: 'Gym', sub: 'PR · Gráfico de progresión' },
+          { icon: 'cash', color: '#4CAF50', label: 'Finanzas', sub: 'Gráficos · Presupuestos · Cuotas' },
+          { icon: 'book', color: '#9C27B0', label: 'Estudio', sub: 'Pomodoro · Materias · Sesiones' },
+          { icon: 'chatbubble-ellipses', color: '#25D366', label: 'RIMU Bot', sub: 'NLP en español' },
+        ].map((m, i, arr) => (
+          <React.Fragment key={m.label}>
+            <SettingRow icon={m.icon} iconColor={m.color} label={m.label} sublabel={m.sub} />
+            {i < arr.length - 1 && <View style={styles.separator} />}
+          </React.Fragment>
+        ))}
+      </View>
+
+      {/* About */}
+      <Text style={styles.sectionLabel}>Acerca de</Text>
+      <View style={styles.section}>
+        <SettingRow icon="information-circle-outline" label="Sobre RIMU" onPress={showAbout} />
+        <View style={styles.separator} />
+        <SettingRow
+          icon="shield-checkmark-outline"
+          iconColor={COLORS.success}
+          label="Privacidad"
+          sublabel="Todos los datos son locales, sin internet"
+        />
+      </View>
+
+      {/* Danger zone */}
+      <Text style={styles.sectionLabel}>Zona de peligro</Text>
+      <View style={styles.section}>
+        <SettingRow
+          icon="trash-outline"
+          iconColor={COLORS.error}
+          label="Eliminar todos los datos"
+          sublabel="Borra permanentemente toda la información"
+          onPress={resetData}
+          danger
+        />
+      </View>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: {
+  content: { padding: 16 },
+  appCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
     backgroundColor: COLORS.primary,
-    padding: 24,
-    paddingTop: 40,
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 24,
   },
-  logo: {
-    width: 56,
-    height: 56,
+  appLogo: {
+    width: 54,
+    height: 54,
     borderRadius: 16,
     backgroundColor: COLORS.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoText: { color: '#000', fontWeight: '900', fontSize: 28 },
-  appName: { fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: 4 },
-  appVersion: { fontSize: 12, color: '#888', marginTop: 2 },
-  section: { marginTop: 20, paddingHorizontal: 16 },
-  sectionTitle: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase', marginBottom: 8, letterSpacing: 1 },
-  sectionCard: { borderRadius: 14, backgroundColor: COLORS.surface, overflow: 'hidden' },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 12,
+  appLogoText: { color: '#000', fontWeight: '900', fontSize: 28 },
+  appName: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 4 },
+  appVersion: { color: '#888', fontSize: 12, marginTop: 2 },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+    marginTop: 8,
+    marginLeft: 4,
   },
-  settingIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  section: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    marginBottom: 16,
+    overflow: 'hidden',
   },
-  settingText: { flex: 1 },
-  settingLabel: { fontSize: 15, fontWeight: '500', color: COLORS.textPrimary },
-  settingSubtitle: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
-  footer: { textAlign: 'center', color: COLORS.textSecondary, fontSize: 13, marginTop: 32, lineHeight: 22 },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  rowIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  rowInfo: { flex: 1 },
+  rowLabel: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
+  rowSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
+  separator: { height: 1, backgroundColor: COLORS.border, marginLeft: 62 },
 });

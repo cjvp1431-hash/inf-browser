@@ -1,18 +1,22 @@
 import { create } from 'zustand';
-import { Task, getTasks, addTask as dbAddTask, updateTask as dbUpdateTask, deleteTask as dbDeleteTask } from '../database/database';
+import { Task, TaskFilter } from '../types';
+import { getTasks, addTask as dbAdd, updateTask as dbUpdate, deleteTask as dbDelete } from '../database/database';
 import { getTodayString } from '../utils/formatters';
 
 interface TasksState {
   tasks: Task[];
   isLoading: boolean;
-  filter: 'all' | 'pending' | 'completed';
+  filter: TaskFilter;
+  searchQuery: string;
   loadTasks: () => Promise<void>;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
-  completeTask: (id: string) => Promise<void>;
+  setStatus: (id: string, status: Task['status']) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
-  setFilter: (filter: 'all' | 'pending' | 'completed') => void;
-  todayCount: () => number;
+  setFilter: (filter: TaskFilter) => void;
+  setSearch: (q: string) => void;
+  filteredTasks: () => Task[];
+  todayPendingCount: () => number;
   completedTodayCount: () => number;
 }
 
@@ -20,6 +24,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   tasks: [],
   isLoading: false,
   filter: 'all',
+  searchQuery: '',
 
   loadTasks: async () => {
     set({ isLoading: true });
@@ -27,35 +32,43 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     set({ tasks, isLoading: false });
   },
 
-  addTask: async (taskData) => {
-    const task = await dbAddTask(taskData);
-    set(state => ({ tasks: [task, ...state.tasks] }));
+  addTask: async (data) => {
+    const task = await dbAdd(data);
+    set(s => ({ tasks: [task, ...s.tasks] }));
   },
 
   updateTask: async (id, updates) => {
-    await dbUpdateTask(id, updates);
-    set(state => ({
-      tasks: state.tasks.map(t => t.id === id ? { ...t, ...updates } : t),
-    }));
+    await dbUpdate(id, updates);
+    set(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, ...updates } : t) }));
   },
 
-  completeTask: async (id) => {
-    await dbUpdateTask(id, { status: 'completed' });
-    set(state => ({
-      tasks: state.tasks.map(t => t.id === id ? { ...t, status: 'completed' } : t),
-    }));
+  setStatus: async (id, status) => {
+    await dbUpdate(id, { status });
+    set(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, status } : t) }));
   },
 
   deleteTask: async (id) => {
-    await dbDeleteTask(id);
-    set(state => ({ tasks: state.tasks.filter(t => t.id !== id) }));
+    await dbDelete(id);
+    set(s => ({ tasks: s.tasks.filter(t => t.id !== id) }));
   },
 
   setFilter: (filter) => set({ filter }),
+  setSearch: (searchQuery) => set({ searchQuery }),
 
-  todayCount: () => {
+  filteredTasks: () => {
+    const { tasks, filter, searchQuery } = get();
+    let result = tasks;
+    if (filter !== 'all') result = result.filter(t => t.status === filter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(t => t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
+    }
+    return result;
+  },
+
+  todayPendingCount: () => {
     const today = getTodayString();
-    return get().tasks.filter(t => t.status === 'pending' && (t.dueDate?.startsWith(today) || !t.dueDate)).length;
+    return get().tasks.filter(t => t.status === 'pending' && t.dueDate?.startsWith(today)).length;
   },
 
   completedTodayCount: () => {
