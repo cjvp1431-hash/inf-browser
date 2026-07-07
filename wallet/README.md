@@ -48,10 +48,10 @@ wallet/
 ├── data/
 │   └── contact.json                  ← EDITA AQUÍ (fuente única de verdad)
 ├── assets/
-│   ├── logo-vp-original.png          ← logo real de la marca (de Google Drive)
-│   ├── master-logo-gold.png          ← monograma recoloreado a oro (generado)
-│   ├── master-logo-white.png         ← variante blanca (generado)
-│   └── master-logo-brand.png         ← azul de marca, recortado (generado)
+│   ├── logo-vp-original.png          ← logo real de la marca (azul, fondo blanco)
+│   ├── master-logo-brand.png         ← azul de marca, transparente ← EN USO
+│   ├── master-logo-gold.png          ← variante oro (generado)
+│   └── master-logo-white.png         ← variante blanca (generado)
 ├── pass/
 │   └── VelozPichardo.pass/           ← "carpeta cruda" del pase
 │       ├── pass.json                 ← generado desde contact.json
@@ -138,7 +138,7 @@ Generado por `scripts/build-pass-json.mjs`. Estructura (valores reales en el arc
 
 | Zona | Campo | Contenido | Color |
 | --- | --- | --- | --- |
-| **Frente** | logo (arriba-izq) | Monograma **VP** (tu logo real, en oro) | oro |
+| **Frente** | logo (arriba-izq) | Monograma **VP** (tu logo real, azul de marca) | azul |
 | | header | *(vacío)* | — |
 | | primary | **César José Veloz Pichardo** | blanco |
 | | secondary | `VELOZ PICHARDO ABOGADOS` → Managing Partner | oro / blanco |
@@ -166,7 +166,8 @@ mapa sean **tappables** directamente desde el reverso del pase.
 ## 4. Assets necesarios y dimensiones
 
 Todos se generan desde tu **logo real** (`logo-vp-original.png`) con `sharp`, sin fuentes
-externas (rasterizado determinista).
+externas (rasterizado determinista). Color aplicado: **azul de marca**. Para cambiar a oro
+o blanco, edita la constante `LOGO` en `scripts/generate-assets.mjs`.
 
 | Asset | @1x | @2x | @3x | Uso | ¿Requerido? |
 | --- | --- | --- | --- | --- | --- |
@@ -176,11 +177,11 @@ externas (rasterizado determinista).
 | `strip` | 312×123 | 624×246 | 936×369 | Cara full-bleed (solo variante storeCard) | No |
 
 **Reglas de imagen que respetamos:**
-- `icon` **no** transparente (se ve en lock screen): tile negro + monograma oro + filete.
+- `icon` **no** transparente (se ve en lock screen): tile negro + monograma + filete.
 - `logo` **sí** transparente: el monograma flota sobre el negro del pase.
 - Se entregan `@2x` y `@3x` (dispositivos modernos); `@1x` por compatibilidad.
-- El recolor a oro preserva la **geometría exacta** de tu marca (se usa el canal alfa
-  del PNG original como máscara; no se redibuja el trazo).
+- El monograma se **extrae del fondo blanco** (máscara por no-blancura con antialias) y se
+  recorta, preservando la **geometría exacta** de tu marca; no se redibuja el trazo.
 
 ---
 
@@ -324,8 +325,8 @@ para todos tus topics.
   fuentes → consistente, legible, nativo. Etiquetas en mayúsculas con tracking = tono premium.
 - **Espacio negativo.** Sin `logoText`, sin header, sin campos auxiliares. El vacío
   comunica lujo (código Centurion).
-- **Logo, no texto, para la marca.** El monograma VP real va como `logo` (arriba-izq),
-  reforzando identidad sin ruido.
+- **Logo, no texto, para la marca.** El monograma VP real (azul de marca) va como `logo`
+  (arriba-izq), reforzando identidad sin ruido. El oro queda para la tipografía de acento.
 - **Reverso = acción.** Todo lo "operativo" (contacto, enlaces, mapa) vive en el reverso,
   tappable. El frente se mantiene ceremonial.
 - **QR discreto.** El código de barras QR queda al pie; su `altText` da fallback textual.

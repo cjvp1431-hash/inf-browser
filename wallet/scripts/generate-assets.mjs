@@ -23,8 +23,8 @@ const SRC = join(ROOT, "assets");
 const OUT = join(ROOT, "pass", "VelozPichardo.pass");
 mkdirSync(OUT, { recursive: true });
 
-// Cambia a "master-logo-white.png" o "master-logo-brand.png" para otra variante.
-const LOGO = join(SRC, "master-logo-gold.png");
+// Azul de marca (elección actual). Alternativas: "master-logo-gold.png", "master-logo-white.png".
+const LOGO = join(SRC, "master-logo-brand.png");
 
 const write = (pipeline, name, w, h) =>
   pipeline.png({ compressionLevel: 9 }).toFile(join(OUT, name)).then(() => console.log(`✓ ${name}  (${w}x${h})`));
