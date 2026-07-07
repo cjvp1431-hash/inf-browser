@@ -1,0 +1,18 @@
+{
+  "name": "veloz-pichardo-pkpass",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Credencial ejecutiva Apple Wallet (PKPass) — Veloz Pichardo Abogados",
+  "scripts": {
+    "logo": "node scripts/prepare-logo.mjs",
+    "assets": "node scripts/generate-assets.mjs",
+    "pass:json": "node scripts/build-pass-json.mjs",
+    "prepare:all": "npm run logo && npm run assets && npm run pass:json",
+    "build": "node scripts/build-pkpass.mjs",
+    "all": "npm run prepare:all && npm run build"
+  },
+  "dependencies": {
+    "sharp": "^0.33.0"
+  }
+}

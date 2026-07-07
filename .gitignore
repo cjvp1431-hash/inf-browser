@@ -200,3 +200,17 @@ dist
 
 ### Astro ###
 .astro/
+
+### Apple Wallet PKPass ###
+# Material de firma sensible — NUNCA versionar
+wallet/certs/*.pem
+wallet/certs/*.p12
+wallet/certs/*.key
+wallet/certs/*.cer
+# Artefactos generados
+wallet/dist/
+wallet/node_modules/
+# Máster intermedio del logo (se regenera desde logo-vp-original.png)
+# manifest y firma se generan en cada build (build-pkpass.mjs)
+wallet/pass/VelozPichardo.pass/manifest.json
+wallet/pass/VelozPichardo.pass/signature

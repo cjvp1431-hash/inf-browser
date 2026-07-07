@@ -1,0 +1,82 @@
+{
+  "formatVersion": 1,
+  "passTypeIdentifier": "pass.com.velozpichardo.card",
+  "teamIdentifier": "TEAMID1234",
+  "organizationName": "Veloz Pichardo Abogados",
+  "serialNumber": "VP-0001-CJVP",
+  "description": "Credencial ejecutiva — Veloz Pichardo Abogados",
+  "webServiceURL": "https://card.velozpichardo.com/wallet",
+  "authenticationToken": "REEMPLAZAR-CON-TOKEN-ALEATORIO-DE-32-CHARS",
+  "backgroundColor": "rgb(11, 11, 12)",
+  "foregroundColor": "rgb(240, 238, 232)",
+  "labelColor": "rgb(198, 166, 100)",
+  "barcodes": [
+    {
+      "format": "PKBarcodeFormatQR",
+      "message": "https://card.velozpichardo.com/vp",
+      "messageEncoding": "iso-8859-1",
+      "altText": "velozpichardo.com"
+    }
+  ],
+  "locations": [
+    {
+      "latitude": 18.4725,
+      "longitude": -69.9388,
+      "relevantText": "Veloz Pichardo Abogados · César José Veloz Pichardo"
+    }
+  ],
+  "generic": {
+    "headerFields": [],
+    "primaryFields": [
+      {
+        "key": "name",
+        "value": "César José Veloz Pichardo"
+      }
+    ],
+    "secondaryFields": [
+      {
+        "key": "role",
+        "label": "VELOZ PICHARDO ABOGADOS",
+        "value": "Managing Partner"
+      }
+    ],
+    "auxiliaryFields": [],
+    "backFields": [
+      {
+        "key": "web",
+        "label": "SITIO WEB",
+        "value": "velozpichardo.com",
+        "attributedValue": "<a href=\"https://velozpichardo.com\">velozpichardo.com</a>"
+      },
+      {
+        "key": "email",
+        "label": "CORREO",
+        "value": "cesar@velozpichardo.com",
+        "attributedValue": "<a href=\"mailto:cesar@velozpichardo.com\">cesar@velozpichardo.com</a>"
+      },
+      {
+        "key": "whatsapp",
+        "label": "WHATSAPP",
+        "value": "+1 (809) 000-0000",
+        "attributedValue": "<a href=\"https://wa.me/18090000000?text=Hola%20C%C3%A9sar%2C%20obtuve%20tu%20tarjeta%20ejecutiva%20desde%20Apple%20Wallet.\">Enviar mensaje &rsaquo;</a>"
+      },
+      {
+        "key": "office",
+        "label": "OFICINA",
+        "value": "Torre Acrópolis, Av. Winston Churchill, Santo Domingo, RD",
+        "attributedValue": "<a href=\"https://maps.apple.com/?ll=18.4725,-69.9388&q=Veloz%20Pichardo%20Abogados\">Av. Winston Churchill 1099, Torre Acrópolis, Piso 12, Santo Domingo</a>"
+      },
+      {
+        "key": "save",
+        "label": "GUARDAR CONTACTO",
+        "value": "Escanea el QR o toca aquí para guardar la vCard, abrir WhatsApp, visitar la web o escribir un correo.",
+        "attributedValue": "<a href=\"https://card.velozpichardo.com/vp\">Abrir tarjeta digital &rsaquo;</a>"
+      },
+      {
+        "key": "legal",
+        "label": " ",
+        "value": "Veloz Pichardo Abogados · Todos los derechos reservados."
+      }
+    ]
+  }
+}

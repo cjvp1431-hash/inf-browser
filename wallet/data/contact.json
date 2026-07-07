@@ -1,0 +1,51 @@
+{
+  "_comment": "FUENTE ÚNICA DE VERDAD. Edita estos valores y luego ejecuta `npm run build:pass` (regenera pass.json) y `npm run build` (regenera el .pkpass). La landing page de Astro también lee este archivo. Los valores marcados con TODO deben reemplazarse con datos reales antes de producción.",
+
+  "identity": {
+    "fullName": "César José Veloz Pichardo",
+    "firstName": "César José",
+    "lastName": "Veloz Pichardo",
+    "title": "Managing Partner",
+    "organization": "Veloz Pichardo Abogados",
+    "monogram": "VP"
+  },
+
+  "contact": {
+    "website": "https://velozpichardo.com",
+    "email": "cesar@velozpichardo.com",
+    "phoneDisplay": "+1 (809) 000-0000",
+    "phoneE164": "+18090000000",
+    "whatsappNumber": "18090000000",
+    "whatsappMessage": "Hola César, obtuve tu tarjeta ejecutiva desde Apple Wallet.",
+    "address": {
+      "street": "Av. Winston Churchill 1099, Torre Acrópolis, Piso 12",
+      "city": "Santo Domingo",
+      "region": "Distrito Nacional",
+      "country": "República Dominicana",
+      "oneLine": "Torre Acrópolis, Av. Winston Churchill, Santo Domingo, RD",
+      "latitude": 18.472500,
+      "longitude": -69.938800
+    }
+  },
+
+  "pass": {
+    "passTypeIdentifier": "pass.com.velozpichardo.card",
+    "teamIdentifier": "TEAMID1234",
+    "organizationName": "Veloz Pichardo Abogados",
+    "serialNumber": "VP-0001-CJVP",
+    "description": "Credencial ejecutiva — Veloz Pichardo Abogados",
+    "landingURL": "https://card.velozpichardo.com/vp",
+    "webServiceURL": "https://card.velozpichardo.com/wallet",
+    "authenticationToken": "REEMPLAZAR-CON-TOKEN-ALEATORIO-DE-32-CHARS"
+  },
+
+  "colors": {
+    "background": "rgb(11, 11, 12)",
+    "foreground": "rgb(240, 238, 232)",
+    "label": "rgb(198, 166, 100)",
+    "goldHex": "#C6A664",
+    "goldSoftHex": "#8C7A4E",
+    "blackHex": "#0B0B0C",
+    "whiteHex": "#F0EEE8"
+  }
+}

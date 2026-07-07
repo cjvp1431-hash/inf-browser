@@ -1,0 +1,152 @@
+---
+import contact from "../../../wallet/data/contact.json";
+
+const c = contact.contact;
+const id = contact.identity;
+const enc = encodeURIComponent;
+
+const waURL = `https://wa.me/${c.whatsappNumber}?text=${enc(c.whatsappMessage)}`;
+const mapsURL = `https://maps.apple.com/?ll=${c.address.latitude},${c.address.longitude}&q=${enc(id.organization)}`;
+const webHost = c.website.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+// Enlace al pase firmado (colócalo en public/vp/ tras `npm run build` en wallet/).
+const pkpassURL = "/vp/VelozPichardo.pkpass";
+
+const actions = [
+  { href: "/vp/cesar.vcf", label: "Guardar contacto", sub: "vCard", primary: true },
+  { href: waURL, label: "WhatsApp", sub: c.phoneDisplay },
+  { href: c.website, label: "Sitio web", sub: webHost },
+  { href: `mailto:${c.email}`, label: "Correo", sub: c.email },
+  { href: mapsURL, label: "Oficina", sub: c.address.city },
+];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{id.fullName} — {id.organization}</title>
+    <meta name="description" content={`${id.title} · ${id.organization}`} />
+    <meta name="theme-color" content="#0B0B0C" />
+    <meta property="og:title" content={`${id.fullName} — ${id.organization}`} />
+    <meta property="og:description" content={id.title} />
+    <link rel="icon" href="/vp/logo-gold.png" />
+  </head>
+  <body>
+    <main class="card">
+      <img class="logo" src="/vp/logo-gold.png" alt={`${id.organization} — logotipo VP`} width="120" />
+
+      <header class="head">
+        <h1>{id.fullName}</h1>
+        <p class="role">{id.title}</p>
+        <p class="firm">{id.organization}</p>
+      </header>
+
+      <nav class="actions">
+        {actions.map((a) => (
+          <a class={a.primary ? "btn btn--gold" : "btn"} href={a.href} rel="noopener">
+            <span class="btn__label">{a.label}</span>
+            <span class="btn__sub">{a.sub}</span>
+          </a>
+        ))}
+      </nav>
+
+      <a class="wallet" href={pkpassURL}>Agregar a Apple Wallet</a>
+
+      <footer class="foot">© {new Date().getFullYear()} {id.organization}</footer>
+    </main>
+
+    <style is:global>
+      :root {
+        --gold: #c6a664;
+        --gold-soft: #8c7a4e;
+        --bg: #0b0b0c;
+        --ink: #f0eee8;
+        --line: rgba(198, 166, 100, 0.18);
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        background: radial-gradient(120% 80% at 50% -10%, #17171a 0%, #0b0b0c 55%, #050506 100%);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+        letter-spacing: 0.2px;
+      }
+      .card {
+        width: 100%;
+        max-width: 380px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .logo { width: 96px; height: auto; margin-bottom: 34px; opacity: 0.98; }
+      .head { margin-bottom: 40px; }
+      h1 {
+        font-weight: 500;
+        font-size: 25px;
+        line-height: 1.25;
+        letter-spacing: 0.3px;
+      }
+      .role {
+        margin-top: 10px;
+        font-size: 13px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+      .firm {
+        margin-top: 14px;
+        font-size: 11px;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: rgba(240, 238, 232, 0.45);
+      }
+      .actions { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+      .btn {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 20px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.015);
+        color: var(--ink);
+        text-decoration: none;
+        transition: border-color 0.25s ease, background 0.25s ease, transform 0.1s ease;
+      }
+      .btn:hover { border-color: rgba(198, 166, 100, 0.4); background: rgba(198, 166, 100, 0.05); }
+      .btn:active { transform: scale(0.99); }
+      .btn__label { font-size: 15px; font-weight: 500; }
+      .btn__sub { font-size: 12px; color: rgba(240, 238, 232, 0.4); letter-spacing: 0.4px; }
+      .btn--gold {
+        border-color: rgba(198, 166, 100, 0.55);
+        background: linear-gradient(180deg, rgba(198, 166, 100, 0.14), rgba(198, 166, 100, 0.05));
+      }
+      .btn--gold .btn__label { color: var(--gold); }
+      .wallet {
+        margin-top: 28px;
+        font-size: 12px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--gold-soft);
+        text-decoration: none;
+        border-bottom: 1px solid var(--gold-soft);
+        padding-bottom: 3px;
+      }
+      .wallet:hover { color: var(--gold); border-color: var(--gold); }
+      .foot {
+        margin-top: 46px;
+        font-size: 10.5px;
+        letter-spacing: 1px;
+        color: rgba(240, 238, 232, 0.28);
+      }
+    </style>
+  </body>
+</html>
