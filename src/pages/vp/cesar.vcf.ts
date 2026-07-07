@@ -1,12 +1,24 @@
 import type { APIRoute } from "astro";
 import contact from "../../../wallet/data/contact.json";
+import { getEnv, waitUntil } from "@wallet/env";
+import { WalletDB } from "@wallet/db";
+
+export const prerender = false;
 
 // Endpoint vCard 3.0 -> /vp/cesar.vcf
 // Al abrirse en iOS/Android/macOS ofrece "Agregar a Contactos".
-export const GET: APIRoute = () => {
+export const GET: APIRoute = ({ locals, request }) => {
   const c = contact.contact;
   const id = contact.identity;
   const a = c.address;
+
+  // Tracking best-effort de descarga de vCard.
+  try {
+    const db = WalletDB.from(getEnv(locals));
+    waitUntil(locals, db.track("download_vcard", { userAgent: request.headers.get("user-agent") }).catch(() => {}));
+  } catch {
+    /* sin runtime/D1: seguimos igual */
+  }
 
   const lines = [
     "BEGIN:VCARD",

@@ -5,19 +5,18 @@ const c = contact.contact;
 const id = contact.identity;
 const enc = encodeURIComponent;
 
-const waURL = `https://wa.me/${c.whatsappNumber}?text=${enc(c.whatsappMessage)}`;
-const mapsURL = `https://maps.apple.com/?ll=${c.address.latitude},${c.address.longitude}&q=${enc(id.organization)}`;
 const webHost = c.website.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
 // Enlace al pase firmado (colócalo en public/vp/ tras `npm run build` en wallet/).
 const pkpassURL = "/vp/VelozPichardo.pkpass";
 
+// Las acciones pasan por /vp/go/* (redirección con tracking); la vCard se trackea en su endpoint.
 const actions = [
   { href: "/vp/cesar.vcf", label: "Guardar contacto", sub: "vCard", primary: true },
-  { href: waURL, label: "WhatsApp", sub: c.phoneDisplay },
-  { href: c.website, label: "Sitio web", sub: webHost },
-  { href: `mailto:${c.email}`, label: "Correo", sub: c.email },
-  { href: mapsURL, label: "Oficina", sub: c.address.city },
+  { href: "/vp/go/whatsapp", label: "WhatsApp", sub: c.phoneDisplay },
+  { href: "/vp/go/web", label: "Sitio web", sub: webHost },
+  { href: "/vp/go/email", label: "Correo", sub: c.email },
+  { href: "/vp/go/office", label: "Oficina", sub: c.address.city },
 ];
 ---
 
@@ -56,6 +55,15 @@ const actions = [
 
       <footer class="foot">© {new Date().getFullYear()} {id.organization}</footer>
     </main>
+
+    <script is:inline>
+      // Beacon de vista (analíticas). No bloquea el render; falla en silencio.
+      try {
+        const u = "/vp/px?e=view_landing";
+        if (navigator.sendBeacon) navigator.sendBeacon(u);
+        else fetch(u, { method: "GET", keepalive: true }).catch(() => {});
+      } catch (_) {}
+    </script>
 
     <style is:global>
       :root {

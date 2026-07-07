@@ -10,5 +10,23 @@
 	"observability": {
 		"enabled": true
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
+	"vars": {
+		"PASS_TYPE_ID": "pass.com.velozpichardo.card",
+		"APNS_HOST": "api.push.apple.com",
+		"SITE_URL": "https://card.velozpichardo.com"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "vp_wallet",
+			"database_id": "REEMPLAZAR-CON-ID-DE-D1"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "PASS_BUCKET",
+			"bucket_name": "vp-wallet-passes"
+		}
+	]
 }

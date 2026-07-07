@@ -237,11 +237,13 @@ cambia, pero su contenido sí**: editas la landing (o rediriges) sin re-emitir e
 Para métricas/redirección server-side, haz que `/vp` sea un endpoint que registre la
 visita y luego renderice — o usa un acortador propio con analytics.
 
-### 6.3 Actualizaciones automáticas vía APNs (PassKit Web Service)
+### 6.3 Actualizaciones automáticas vía APNs (PassKit Web Service) — ✅ IMPLEMENTADO
 
-Apple Wallet refresca un pase llamando a tu `webServiceURL`. Necesitas implementar la
-**PassKit Web Service REST API** y empujar cambios con **APNs**. Encaja perfecto en este
-Worker (Astro API routes + D1 + Cloudflare como cliente APNs HTTP/2).
+Apple Wallet refresca un pase llamando a tu `webServiceURL`. La **PassKit Web Service REST
+API** completa está implementada en este repo (Astro API routes + D1 + R2 + APNs por Web
+Crypto). **Guía completa: [`WEBSERVICE.md`](./WEBSERVICE.md).** Incluye registro de
+dispositivos, entrega de pases, actualizaciones y revocaciones vía APNs, autenticación por
+token, logging y analíticas (instalaciones + clics). Resumen de la API a continuación.
 
 **Endpoints a implementar** (base = `webServiceURL`, Apple añade `/v1/...`):
 
@@ -300,9 +302,10 @@ async function pushWalletUpdate(pushToken, env) {
 → descarga el `.p8` (guárdalo como secreto de Worker, nunca en git). Un solo `.p8` sirve
 para todos tus topics.
 
-> Fase 2 opcional: la credencial funciona perfectamente **sin** web service. Solo lo
-> necesitas si quieres **actualizar pases ya instalados** (p. ej. cambiar el cargo, el
-> teléfono o mostrar un mensaje) sin que la persona vuelva a escanear el QR.
+> La credencial funciona perfectamente **sin** web service. Lo necesitas si quieres
+> **actualizar pases ya instalados** (cambiar cargo, teléfono, mostrar un mensaje) o
+> **revocarlos** sin que la persona vuelva a escanear el QR. Puesta en marcha en
+> [`WEBSERVICE.md`](./WEBSERVICE.md).
 
 ### 6.4 Alternativas de hosting
 
